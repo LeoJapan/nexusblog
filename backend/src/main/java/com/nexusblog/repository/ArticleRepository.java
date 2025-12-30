@@ -51,11 +51,6 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
                             Pageable pageable);
     
     /**
-     * Find all articles by user (for admin)
-     */
-    Page<Article> findByAuthorId(Long authorId, Pageable pageable);
-    
-    /**
      * Get popular articles (most viewed)
      */
     @Query("SELECT a FROM Article a WHERE a.status = 'PUBLISHED' ORDER BY a.views DESC")

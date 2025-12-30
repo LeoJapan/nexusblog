@@ -1,6 +1,6 @@
 package com.nexusblog.config;
 
-import com.nexusblog.utils.JwtAuthenticationFilter;
+import com.nexusblog.config.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
