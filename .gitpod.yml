@@ -1,0 +1,60 @@
+# This file is for Gitpod.io
+# Gitpod will automatically start the workspace with these configurations
+
+image:
+  file: .gitpod.Dockerfile
+
+# VS Code extensions
+vscode:
+  extensions:
+    - vscjava.vscode-java-pack
+    - esbenp.prettier-vscode
+    - dbaeumer.vscode-eslint
+    - formulahendry.auto-rename-tag
+    - bradlc.vscode-tailwindcss
+
+# Tasks to run on workspace startup
+tasks:
+  - name: Setup Database
+    init: |
+      sudo service mysql start 2>/dev/null
+      mysql -u root -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root123';" 2>/dev/null || true
+      mysql -u root -proot123 -e "CREATE DATABASE IF NOT EXISTS nexusblog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" 2>/dev/null || true
+      mysql -u root -proot123 nexusblog < database/init.sql 2>/dev/null || echo "Database already initialized"
+      echo "[✓] MySQL started"
+    command: |
+      echo "MySQL is running"
+      
+  - name: Start Backend
+    init: |
+      cd backend && mvn clean package -DskipTests -q
+      echo "[✓] Backend built"
+    command: |
+      mvn spring-boot:run
+    openMode: split-right
+    
+  - name: Start Frontend
+    init: |
+      cd frontend && npm install
+      echo "[✓] Frontend dependencies installed"
+    command: |
+      npm run dev -- --host 0.0.0.0
+    openMode: split-right
+
+# Ports to expose
+ports:
+  - name: Frontend
+    port: 3000
+    visibility: public
+  - name: Backend API
+    port: 8080
+    visibility: public
+  - name: API Docs
+    port: 8080
+    visibility: public
+    onOpen: ignore
+
+# Prebuild configuration (optional)
+# prebuilds:
+#   addCheck: true
+#   addBadge: true
