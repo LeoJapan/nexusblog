@@ -19,6 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 /**
  * Admin Service - 管理员服务类
  * Handles admin dashboard and management operations.
