@@ -162,10 +162,10 @@ public class AdminService {
     /**
      * Dashboard Statistics Response DTO
      */
-    @lombok.Data
-    @lombok.Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class DashboardStats {
         private Long totalUsers;
         private Long activeUsers;
