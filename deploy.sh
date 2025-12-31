@@ -1,7 +1,9 @@
-# NexusBlog 一键部署脚本
-# 支持 H2（默认）和 MySQL 两种数据库模式
-
 #!/bin/bash
+
+# NexusBlog 一键部署脚本 - 增强版
+# 支持自动安装 Java 17 和管理 MySQL 容器
+
+set -e
 
 # 颜色定义
 RED='\033[0;31m'
@@ -9,10 +11,10 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # 默认配置
-DB_TYPE=${1:-h2}  # 默认使用 H2 数据库
+DB_TYPE=${1:-h2}
 MYSQL_HOST=${MYSQL_HOST:-localhost}
 MYSQL_PORT=${MYSQL_PORT:-3306}
 MYSQL_DATABASE=${MYSQL_DATABASE:-nexusblog}
@@ -29,7 +31,7 @@ print_header() {
 }
 
 print_step() {
-    echo -e "${BLUE}[步骤 $1/$2]${NC} $3"
+    echo -e "${BLUE}[步骤 $1]${NC} $2"
 }
 
 print_success() {
@@ -48,66 +50,157 @@ print_info() {
     echo -e "${CYAN}ℹ 信息:${NC} $1"
 }
 
-# 检查必要的工具
-check_dependencies() {
-    print_header "检查环境依赖"
+# 安装 Java 17
+install_java17() {
+    print_header "安装 Java 17"
     
-    local missing_tools=()
+    print_step "1" "检查当前 Java 版本..."
+    local current_java=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
     
-    # 检查 Java
-    if ! command -v java &> /dev/null; then
-        missing_tools+=("Java")
-    else
-        print_success "Java 已安装: $(java -version 2>&1 | head -1)"
+    if [ "$current_java" -ge 17 ]; then
+        print_success "Java 版本已经是 17 或更高: $(java -version 2>&1 | head -1)"
+        return 0
     fi
     
-    # 检查 Maven
-    if ! command -v mvn &> /dev/null; then
-        missing_tools+=("Maven")
+    print_warning "当前 Java 版本: $current_java，需要升级到 Java 17"
+    
+    print_step "2" "安装 Java 17..."
+    
+    # 检查是否为 root 用户
+    if [ "$EUID" -ne 0 ]; then
+        print_info "尝试使用 sudo 安装..."
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq openjdk-17-jdk
     else
-        print_success "Maven 已安装: $(mvn -version 2>&1 | head -1)"
+        apt-get update -qq
+        apt-get install -y -qq openjdk-17-jdk
     fi
     
-    # 检查 Node.js
-    if ! command -v node &> /dev/null; then
-        missing_tools+=("Node.js")
+    if [ $? -eq 0 ]; then
+        print_success "Java 17 安装成功"
     else
-        print_success "Node.js 已安装: $(node -v)"
+        print_error "Java 17 安装失败，请手动安装"
+        return 1
     fi
     
-    # 检查 npm
-    if ! command -v npm &> /dev/null; then
-        missing_tools+=("npm")
-    else
-        print_success "npm 已安装: $(npm -v)"
+    print_step "3" "配置 Java 17..."
+    
+    # 查找 Java 17 安装位置
+    local java17_path=$(update-alternatives --list java 2>/dev/null | grep "java-17" | head -1 || true)
+    
+    if [ -z "$java17_path" ]; then
+        java17_path=$(find /usr/lib/jvm -name "java-17*" -type d 2>/dev/null | head -1)/bin/java
     fi
     
-    # 如果缺少工具，提示用户
-    if [ ${#missing_tools[@]} -ne 0 ]; then
-        print_error "缺少必要的工具: ${missing_tools[*]}"
-        echo "请先安装这些工具后再运行此脚本。"
-        exit 1
+    if [ -f "$java17_path" ]; then
+        export JAVA_HOME=$(dirname $(dirname $java17_path))
+        export PATH=$JAVA_HOME/bin:$PATH
+        print_success "JAVA_HOME 设置为: $JAVA_HOME"
+    else
+        # 尝试查找
+        java17_path=$(which java)
+        print_warning "使用系统默认 Java: $java17_path"
+    fi
+    
+    print_info "Java 版本: $(java -version 2>&1 | head -1)"
+}
+
+# 检查 Docker
+check_docker() {
+    if command -v docker &> /dev/null; then
+        print_success "Docker 已安装: $(docker --version | head -1)"
+        return 0
+    else
+        print_warning "Docker 未安装"
+        return 1
     fi
 }
 
-# 检查 Docker（可选）
-check_docker() {
-    if command -v docker &> /dev/null; then
-        print_success "Docker 可用"
-        docker --version | head -1
+# 管理 MySQL 容器
+manage_mysql_container() {
+    print_header "管理 MySQL 容器"
+    
+    # 检查容器是否存在
+    if docker ps -a --format '{{.Names}}' | grep -q "nexusblog-mysql"; then
+        print_info "MySQL 容器已存在"
+        
+        # 检查是否在运行
+        if docker ps --format '{{.Names}}' | grep -q "nexusblog-mysql"; then
+            print_success "MySQL 容器已在运行"
+            return 0
+        else
+            print_warning "MySQL 容器已存在但未运行，尝试启动..."
+            docker start nexusblog-mysql
+            if [ $? -eq 0 ]; then
+                print_success "MySQL 容器已启动"
+                sleep 10
+                return 0
+            else
+                print_error "无法启动容器，尝试删除后重新创建..."
+                docker rm -f nexusblog-mysql
+            fi
+        fi
+    fi
+    
+    # 检查端口 3306 是否被占用
+    if docker ps --format '{{.Ports}}' | grep -q "3306->3306"; then
+        print_warning "端口 3306 已被其他容器占用"
+        print_info "假设外部 MySQL 服务已就绪，跳过容器创建"
         return 0
-    else
-        print_warning "Docker 未安装，将跳过 MySQL 容器管理"
+    fi
+    
+    # 创建新的 MySQL 容器
+    print_step "1" "创建 MySQL 容器..."
+    
+    docker run -d \
+        --name nexusblog-mysql \
+        -p 3306:3306 \
+        -e MYSQL_ROOT_PASSWORD=$MYSQL_PASSWORD \
+        -e MYSQL_DATABASE=$MYSQL_DATABASE \
+        -e MYSQL_USER=$MYSQL_USER \
+        -e MYSQL_PASSWORD=$MYSQL_PASSWORD \
+        -v mysql_data:/var/lib/mysql \
+        mysql:8.0 \
+        --character-set-server=utf8mb4 \
+        --collation-server=utf8mb4_unicode_ci \
+        --default-authentication-plugin=mysql_native_password
+    
+    if [ $? -ne 0 ]; then
+        print_error "无法创建 MySQL 容器"
+        print_info "请手动执行以下命令:"
+        echo "docker run -d --name nexusblog-mysql -p 3306:3306 \
+-e MYSQL_ROOT_PASSWORD=$MYSQL_PASSWORD \
+-e MYSQL_DATABASE=$MYSQL_DATABASE \
+mysql:8.0"
         return 1
     fi
+    
+    print_success "MySQL 容器创建成功"
+    
+    # 等待 MySQL 启动
+    print_step "2" "等待 MySQL 启动（最多 60 秒）..."
+    local max_attempts=30
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        if docker exec nexusblog-mysql mysqladmin ping -h localhost -u root -p$MYSQL_PASSWORD &> /dev/null; then
+            print_success "MySQL 已就绪"
+            return 0
+        fi
+        sleep 2
+        attempt=$((attempt + 1))
+        echo -n "."
+    done
+    
+    echo ""
+    print_warning "MySQL 启动超时，但将继续..."
 }
 
 # 停止已有服务
 stop_services() {
     print_header "停止已有服务"
     
-    # 停止后端服务
-    print_step "1" "2" "停止后端服务..."
+    print_step "1" "停止后端服务..."
     local backend_pids=$(pgrep -f "nexusblog-backend.jar" 2>/dev/null || true)
     if [ -n "$backend_pids" ]; then
         echo "  找到后端进程: $backend_pids"
@@ -118,8 +211,7 @@ stop_services() {
         echo "  没有运行的后端服务"
     fi
     
-    # 停止前端服务
-    print_step "2" "2" "停止前端服务..."
+    print_step "2" "停止前端服务..."
     local frontend_pids=$(pgrep -f "vite" 2>/dev/null || true)
     if [ -n "$frontend_pids" ]; then
         echo "  找到前端进程: $frontend_pids"
@@ -129,18 +221,13 @@ stop_services() {
     else
         echo "  没有运行的前端服务"
     fi
-    
-    # 如果使用 MySQL 且 Docker 可用，询问是否停止容器
-    if [ "$DB_TYPE" = "mysql" ] && check_docker; then
-        print_info "MySQL 容器仍在运行中（如需停止，请手动执行: docker stop nexusblog-mysql）"
-    fi
 }
 
 # 清理构建缓存
 clean_cache() {
     print_header "清理构建缓存"
     
-    print_step "1" "1" "清理 Maven 和前端缓存..."
+    print_step "1" "清理 Maven 和前端缓存..."
     
     cd backend
     mvn clean -q
@@ -160,73 +247,28 @@ configure_database() {
     cd backend
     
     if [ "$DB_TYPE" = "h2" ]; then
-        print_info "使用 H2 内存数据库（无需外部数据库）"
-        print_info "数据将在服务重启时重置"
+        print_info "使用 H2 内存数据库"
         
-        # 复制 H2 初始化脚本
         if [ -f "../database/init-h2.sql" ]; then
             cp ../database/init-h2.sql src/main/resources/data.sql
             print_success "已复制 H2 初始化脚本"
         fi
         
-        # 使用 H2 profile 启动
         SPRING_PROFILE="h2"
         
-    elif [ "$DB_TYPE" = "mysql" ]; then
-        print_info "配置 MySQL 数据库连接"
-        echo "  主机: $MYSQL_HOST:$MYSQL_PORT"
-        echo "  数据库: $MYSQL_DATABASE"
-        echo "  用户: $MYSQL_USER"
+    else
+        print_info "使用 MySQL 数据库"
+        print_info "连接: $MYSQL_HOST:$MYSQL_PORT/$MYSQL_DATABASE"
         
-        # 检查 Docker 是否可用
-        if check_docker; then
-            # 检查 MySQL 容器是否在运行
-            if ! docker ps --format '{{.Names}}' | grep -q "nexusblog-mysql"; then
-                print_warning "MySQL 容器未运行，尝试启动..."
-                if docker start nexusblog-mysql 2>/dev/null; then
-                    print_success "MySQL 容器已启动"
-                    sleep 5
-                else
-                    print_error "无法启动 MySQL 容器，请手动启动"
-                    print_info "运行命令: docker run -d --name nexusblog-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root123 -e MYSQL_DATABASE=nexusblog mysql:8.0"
-                fi
-            else
-                print_success "MySQL 容器已在运行"
-            fi
-            
-            # 更新环境变量供 Java 应用使用
-            export MYSQL_HOST=localhost
-            export MYSQL_PORT=3306
-        else
-            print_warning "Docker 不可用，假设外部 MySQL 已就绪"
-        fi
-        
-        # 复制 MySQL 初始化脚本
         if [ -f "../database/init.sql" ]; then
             cp ../database/init.sql src/main/resources/data.sql
             print_success "已复制 MySQL 初始化脚本"
         fi
         
         SPRING_PROFILE="mysql"
-        
-    else
-        print_error "不支持的数据库类型: $DB_TYPE"
-        print_info "支持的类型: h2, mysql"
-        exit 1
     fi
     
     cd ..
-    
-    # 创建环境变量文件
-    cat > backend/.env << EOF
-MYSQL_HOST=$MYSQL_HOST
-MYSQL_PORT=$MYSQL_PORT
-MYSQL_DATABASE=$MYSQL_DATABASE
-MYSQL_USER=$MYSQL_USER
-MYSQL_PASSWORD=$MYSQL_PASSWORD
-SPRING_PROFILES_ACTIVE=$SPRING_PROFILE
-EOF
-    
     print_success "数据库配置完成 (Profile: $SPRING_PROFILE)"
 }
 
@@ -234,15 +276,23 @@ EOF
 build_backend() {
     print_header "构建后端服务"
     
+    # 确保使用 Java 17
+    if ! java -version 2>&1 | grep -q "version \"1[789]"; then
+        if [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            export PATH=$JAVA_HOME/bin:$PATH
+            print_info "使用 Java 17: $JAVA_HOME"
+        fi
+    fi
+    
+    print_step "1" "编译和打包后端..."
+    
     cd backend
     
-    print_step "1" "1" "编译和打包后端..."
-    
-    # 使用指定 profile 构建
     if [ "$DB_TYPE" = "h2" ]; then
-        mvn clean package -DskipTests -Dspring.profiles.active=h2 -q
+        mvn clean package -DskipTests -Dspring.profiles.active=h2
     else
-        mvn clean package -DskipTests -Dspring.profiles.active=mysql -q
+        mvn clean package -DskipTests -Dspring.profiles.active=mysql
     fi
     
     if [ $? -eq 0 ]; then
@@ -261,9 +311,8 @@ build_frontend() {
     
     cd frontend
     
-    print_step "1" "1" "安装前端依赖..."
+    print_step "1" "安装前端依赖..."
     
-    # 检查是否需要安装依赖
     if [ ! -d "node_modules" ]; then
         print_info "首次运行，正在安装依赖..."
         npm install
@@ -287,22 +336,23 @@ start_backend() {
     
     cd backend
     
-    print_step "1" "1" "启动 Spring Boot 应用..."
+    print_step "1" "启动 Spring Boot 应用..."
     
-    # 加载环境变量
-    if [ -f .env ]; then
-        export $(cat .env | xargs)
+    # 确保使用 Java 17
+    if ! java -version 2>&1 | grep -q "version \"1[789]"; then
+        if [ -d "/usr/lib/jvm/java-17-openjdk-amd64" ]; then
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            export PATH=$JAVA_HOME/bin:$PATH
+        fi
     fi
     
-    # 使用 nohup 启动后端
     nohup java -jar target/nexusblog-backend.jar \
         --server.port=$BACKEND_PORT \
-        --spring.profiles.active=$SPRING_PROFILES_ACTIVE \
+        --spring.profiles.active=$SPRING_PROFILE \
         > ../backend.log 2>&1 &
     
     BACKEND_PID=$!
     
-    # 等待服务启动
     print_info "等待后端服务启动..."
     local max_attempts=30
     local attempt=0
@@ -331,15 +381,13 @@ start_frontend() {
     
     cd frontend
     
-    print_step "1" "1" "启动 Vue 开发服务器..."
+    print_step "1" "启动 Vue 开发服务器..."
     
-    # 使用 nohup 启动前端
     nohup npm run dev -- --host 0.0.0.0 --port $FRONTEND_PORT \
         > ../frontend.log 2>&1 &
     
     FRONTEND_PID=$!
     
-    # 等待服务启动
     print_info "等待前端服务启动..."
     local max_attempts=20
     local attempt=0
@@ -393,12 +441,6 @@ show_info() {
     echo ""
     echo -e "${CYAN}🛑 停止服务命令:${NC}"
     echo "   kill \$(cat backend.pid) \$(cat frontend.pid)"
-    
-    echo ""
-    echo -e "${YELLOW}💡 提示:${NC}"
-    echo "   • H2 模式数据不会持久化，重启服务后数据会重置"
-    echo "   • 如需使用 MySQL，请运行: ./deploy.sh mysql"
-    echo "   • 如需后台运行，请使用: nohup ./deploy.sh &"
 }
 
 # 主函数
@@ -407,9 +449,9 @@ main() {
     echo ""
     echo -e "${CYAN}╔════════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}║                                                    ║${NC}"
-    echo -e "${CYAN}║          NexusBlog 一键部署脚本 v1.0               ║${NC}"
+    echo -e "${CYAN}║          NexusBlog 一键部署脚本 v2.0               ║${NC}"
     echo -e "${CYAN}║                                                    ║${NC}"
-    echo -e "${CYAN}║  支持 H2（默认）和 MySQL 数据库模式                ║${NC}"
+    echo -e "${CYAN}║  支持自动安装 Java 17 和管理 MySQL 容器           ║${NC}"
     echo -e "${CYAN}║                                                    ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════════════════╝${NC}"
     echo ""
@@ -420,7 +462,12 @@ main() {
     echo ""
     
     # 执行部署步骤
-    check_dependencies
+    if [ "$DB_TYPE" = "mysql" ]; then
+        install_java17
+        check_docker
+        manage_mysql_container
+    fi
+    
     stop_services
     clean_cache
     configure_database
@@ -449,28 +496,16 @@ while [[ $# -gt 0 ]]; do
             echo "  h2      使用 H2 内存数据库（默认）"
             echo "  mysql   使用 MySQL 数据库"
             echo ""
-            echo "环境变量:"
-            echo "  MYSQL_HOST      MySQL 主机地址（默认: localhost）"
-            echo "  MYSQL_PORT      MySQL 端口（默认: 3306）"
-            echo "  MYSQL_DATABASE  数据库名称（默认: nexusblog）"
-            echo "  MYSQL_USER      数据库用户（默认: root）"
-            echo "  MYSQL_PASSWORD  数据库密码（默认: root123）"
-            echo "  BACKEND_PORT    后端服务端口（默认: 8080）"
-            echo "  FRONTEND_PORT   前端服务端口（默认: 8088）"
-            echo ""
             echo "示例:"
             echo "  $0                    # 使用 H2 启动"
             echo "  $0 mysql              # 使用 MySQL 启动"
-            echo "  MYSQL_PASSWORD=123456 $0 mysql  # 自定义密码"
             exit 0
             ;;
         *)
             print_error "未知参数: $1"
-            echo "使用 $0 --查看帮助"
             exit 1
             ;;
     esac
 done
 
-# 运行主函数
 main
