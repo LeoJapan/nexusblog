@@ -1,0 +1,108 @@
+[步骤] 3/5 清理并构建后端 Spring Boot 项目...
+当前目录: /workspaces/nexusblog/backend
+Java Home: /usr/lib/jvm/java-17-openjdk-amd64
+[WARNING] Unable to find the root directory. Create a .mvn directory in the root directory or add the root="true" attribute on the root project's model to identify it.
+[INFO] Scanning for projects...
+[INFO] Loaded 21849 auto-discovered prefixes for remote repository central (prefixes-central.txt)
+[WARNING] 
+[WARNING] 1 problem was encountered while building the effective model for 'com.nexusblog:nexusblog:jar:1.0.0' (use -e to see details)
+[WARNING] 
+[WARNING] Total model problems reported: 1
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] 
+[INFO] -----------------------------------------------< com.nexusblog:nexusblog >------------------------------------------------
+[INFO] Building NexusBlog 1.0.0
+[INFO]   from pom.xml
+[INFO] ---------------------------------------------------------[ jar ]----------------------------------------------------------
+[INFO] Loaded 74 auto-discovered prefixes for remote repository apache.snapshots (prefixes-apache.snapshots-c1d4c55f9308e5ac18a4069bed41dca64d85c515.txt)
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to plexus.snapshots-9dedea94451709299d055319c137abeb30aacdef (https://oss.sonatype.org/content/repositories/plexus-snapshots): HTTP Status: 503
+[WARNING] 1 problem was encountered while building the effective model for 'org.springframework.data:spring-data-jpa:jar:3.2.0' during dependency collection step for project (use -X to see details)
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to spring-release-e22ad65be0b5fee6143d584bba6f2b61b37bb6bf (https://repo.spring.io/release): HTTP Status: 401
+[WARNING] 1 problem was encountered while building the effective model for 'org.springdoc:springdoc-openapi-starter-webmvc-ui:jar:2.3.0' during dependency collection step for project (use -X to see details)
+[WARNING] 1 problem was encountered while building the effective model for 'org.springdoc:springdoc-openapi-starter-webmvc-api:jar:2.3.0' during dependency collection step for project (use -X to see details)
+[WARNING] 1 problem was encountered while building the effective model for 'org.springframework.data:spring-data-commons:jar:3.2.0' during dependency collection step for project (use -X to see details)
+[WARNING] 1 problem was encountered while building the effective model for 'org.springdoc:springdoc-openapi-starter-common:jar:2.3.0' during dependency collection step for project (use -X to see details)
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ nexusblog ---
+[WARNING] Could not transfer metadata /.meta/prefixes.txt from/to oss.snapshots-b16ceaff24bf074b39f914de34e30df4dbfbf8bd (https://oss.sonatype.org/content/repositories/plexus-snapshots/): HTTP Status: 503
+[INFO] Deleting /workspaces/nexusblog/backend/target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ nexusblog ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ nexusblog ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 34 source files with javac [debug release 17] to target/classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[165,6] cannot find symbol
+  symbol:   class Data
+  location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[166,6] cannot find symbol
+  symbol:   class Builder
+  location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[167,6] cannot find symbol
+  symbol:   class NoArgsConstructor
+  location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[168,6] cannot find symbol
+  symbol:   class AllArgsConstructor
+  location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[164,6] cannot find symbol
+  symbol:   class Data
+  location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[165,6] cannot find symbol
+  symbol:   class Builder
+  location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[166,6] cannot find symbol
+  symbol:   class NoArgsConstructor
+  location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[167,6] cannot find symbol
+  symbol:   class AllArgsConstructor
+  location: class com.nexusblog.service.UserService
+[INFO] 8 errors 
+[INFO] -------------------------------------------------------------
+[INFO] --------------------------------------------------------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] --------------------------------------------------------------------------------------------------------------------------
+[INFO] Total time:  9.204 s
+[INFO] Finished at: 2025-12-31T00:21:00Z
+[INFO] --------------------------------------------------------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project nexusblog: Compilation failure: Compilation failure: 
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[165,6] cannot find symbol
+[ERROR]   symbol:   class Data
+[ERROR]   location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[166,6] cannot find symbol
+[ERROR]   symbol:   class Builder
+[ERROR]   location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[167,6] cannot find symbol
+[ERROR]   symbol:   class NoArgsConstructor
+[ERROR]   location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/AdminService.java:[168,6] cannot find symbol
+[ERROR]   symbol:   class AllArgsConstructor
+[ERROR]   location: class com.nexusblog.service.AdminService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[164,6] cannot find symbol
+[ERROR]   symbol:   class Data
+[ERROR]   location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[165,6] cannot find symbol
+[ERROR]   symbol:   class Builder
+[ERROR]   location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[166,6] cannot find symbol
+[ERROR]   symbol:   class NoArgsConstructor
+[ERROR]   location: class com.nexusblog.service.UserService
+[ERROR] /workspaces/nexusblog/backend/src/main/java/com/nexusblog/service/UserService.java:[167,6] cannot find symbol
+[ERROR]   symbol:   class AllArgsConstructor
+[ERROR]   location: class com.nexusblog.service.UserService
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the '-e' switch
+[ERROR] Re-run Maven using the '-X' switch to enable verbose output
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/CompilationFailureException
+[错误] 后端构建失败
