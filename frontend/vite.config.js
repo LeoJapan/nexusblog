@@ -11,6 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0',
+    strictPort: true,  // 强制使用指定端口，如果被占用则报错
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
