@@ -39,3 +39,4 @@ sql:
   init:
     mode: always
     continue-on-error: true
+    schema-locations: classpath:data.sql
